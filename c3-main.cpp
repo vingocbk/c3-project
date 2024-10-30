@@ -209,7 +209,7 @@ int main(int argc, char *argv[]){
 
 	// Load map
 	PointCloudT::Ptr mapCloud(new PointCloudT);
-  	pcl::io::loadPCDFile("map.pcd", *mapCloud);
+  	pcl::io::loadPCDFile("../map.pcd", *mapCloud);
   	cout << "Loaded " << mapCloud->points.size() << " data points from map.pcd" << endl;
 	renderPointCloud(viewer, mapCloud, "map", Color(0,0,1)); 
 
