@@ -127,8 +127,8 @@ Eigen::Matrix4d ICPAlgorithm(PointCloudT::Ptr target, PointCloudT::Ptr source, P
     cout << "ICP has converged: " << icpAlgorithm.hasConverged () << " score: " << icpAlgorithm.getFitnessScore () <<  " time: " << time.toc() <<  " ms" << endl;
 
     if (icpAlgorithm.hasConverged ()) {
-      transforMatrix = icpAlgorithm.getFinalTransformation ().cast<double>();
-      transforMatrix =  transforMatrix * transformInit;
+		transforMatrix = icpAlgorithm.getFinalTransformation ().cast<double>();
+		transforMatrix =  transforMatrix * transformInit;
     } else 
 		cout << "ERROR: ICP did not converge" << endl;
     return transforMatrix;
@@ -298,10 +298,12 @@ int main(int argc, char *argv[]){
 			//pose = ....
 			// select matchingTransform
 			Eigen::Matrix4d matchingTransform;
+			// Eigen::Matrix4d matchingTransform = USE_NDT ? NDT(mapCloud, cloudFiltered, pose) : ICP(mapCloud, cloudFiltered, pose);
+
 			if (useNDTAlgorithm)
-				Eigen::Matrix4d matchingTransform = NDTAlgorithm(mapCloud, cloudFiltered, pose);
+				matchingTransform = NDTAlgorithm(mapCloud, cloudFiltered, pose);
 			else 
-				Eigen::Matrix4d matchingTransform = ICPAlgorithm(mapCloud, cloudFiltered, pose);
+				matchingTransform = ICPAlgorithm(mapCloud, cloudFiltered, pose);
 			// set pose
 			pose = getPose(matchingTransform);
 
