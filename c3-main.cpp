@@ -171,7 +171,7 @@ int main(int argc, char *argv[]){
 	if(argc == 2 && strcmp(argv[1], "2") == 0) {
 		useNDTAlgorithm = false;
 	}
-
+	cout << "useNDTAlgorithm " << useNDTAlgorithm << endl;
 	auto client = cc::Client("localhost", 2000);
 	client.SetTimeout(2s);
 	auto world = client.GetWorld();

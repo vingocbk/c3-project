@@ -47,6 +47,7 @@
 6. Open a new Terminal tab and execute the following command to start the simulator.
 
     ```bash
+    chmod +x run_carla.sh
     ./run_carla.sh
     ```  
 
