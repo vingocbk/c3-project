@@ -36,7 +36,9 @@
 5. Compile the project using the following commands. 
 
     ```bash
-    cmake .
+    mkdir build
+    cd build
+    cmake ..
     make
     ```
     These steps will generate the **clooud_loc** executable. 
@@ -50,8 +52,16 @@
 
 
 7. Open another Terminal tab and execute the following to run the project.
+   
+    with NDT Algorithm
+
     ```bash
     ./cloud_loc 
+    ```
+    with ICP Algorithm
+
+    ```bash
+    ./cloud_loc 2
     ```
 If you encounter core dump on start up, just rerun and try again. Crash doesn't happen more than a couple of times. 
 

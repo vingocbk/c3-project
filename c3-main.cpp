@@ -287,7 +287,7 @@ int main(int argc, char *argv[]){
 			// double filterResolution = 0.1;
 			double filterResolution = 0.5;
 			// set leaf size
-			vg.setLeafSize(filterResolution, filterResolution, filterResolution);
+			voxelGrid.setLeafSize(filterResolution, filterResolution, filterResolution);
 			// Declare cloud filtered
 			typename pcl::PointCloud<PointT>::Ptr cloudFiltered (new pcl::PointCloud<PointT>);
 			// Filter cloud points
