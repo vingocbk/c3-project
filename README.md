@@ -36,9 +36,7 @@
 5. Compile the project using the following commands. 
 
     ```bash
-    mkdir build
-    cd build
-    cmake ..
+    cmake .
     make
     ```
     These steps will generate the **clooud_loc** executable. 
