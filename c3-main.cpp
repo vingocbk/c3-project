@@ -98,73 +98,60 @@ void drawCar(Pose pose, int num, Color color, double alpha, pcl::visualization::
     box.cube_height = 2;
 	renderBox(viewer, box, num, color, alpha);
 }
-// Declare the ICP algorithm with predefined parameters
-Eigen::Matrix4d ICP(PointCloudT::Ptr target, PointCloudT::Ptr source, Pose startingPose){
-	Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity();
-	Eigen::Matrix4d initTransform = transform3D(startingPose.rotation.yaw, startingPose.rotation.pitch,
-		startingPose.rotation.roll, startingPose.position.x, startingPose.position.y, startingPose.position.z);
-	PointCloudT::Ptr transformSource (new PointCloudT);
-	pcl::transformPointCloud(*source, *transformSource, initTransform);
 
-	pcl::console::TicToc time;
-	time.tic();
+Eigen::Matrix4d ICP(pcl::PointCloud<PointT>::Ptr target, pcl::PointCloud<PointT>::Ptr source, Pose startPose, int iterations)
+{
+	Eigen::Matrix4d initTransform = transform3D(startPose.rotation.yaw, startPose.rotation.pitch, startPose.rotation.roll, startPose.position.x,
+												startPose.position.y, startPose.position.z);
+	PointCloudT::Ptr transform_source(new PointCloudT);
+	pcl::transformPointCloud(*source, *transform_source, initTransform);
 
-	int iteration = 60;
-	pcl::IterativeClosestPoint<PointT, PointT>icp;
-	icp.setTransformationEpsilon(1e-8);
-	icp.setMaximumIterations(iteration);
-	icp.setInputSource(transformSource);
+	pcl::IterativeClosestPoint<PointT, PointT> icp;
+	icp.setInputSource(transform_source);
 	icp.setInputTarget(target);
+	icp.setMaximumIterations(iterations);
+	icp.setMaxCorrespondenceDistance(2);
 
-	PointCloudT::Ptr cloud_icp (new PointCloudT);
+	PointCloudT::Ptr cloud_icp(new PointCloudT);
 	icp.align(*cloud_icp);
 
-	cout << "converged: "<<icp.hasConverged() << "score: "<< icp.getFitnessScore() <<"time: "<<time.toc()<<"ms"<<endl;
+	Eigen::Matrix4d transformation_matrix = Eigen::Matrix4d::Identity(4, 4);
 
 	if(icp.hasConverged()){
-		transformation_matrix = icp.getFinalTransformation().cast<double>();
-		transformation_matrix = transformation_matrix * initTransform;
-		return transformation_matrix;
-	}
-	else
-	{
-		return transformation_matrix;
-	}
+      transformation_matrix = icp.getFinalTransformation().cast<double>();
+      transformation_matrix = transformation_matrix * initTransform;}
+	else{
+      cout << "warning! ICP has not converged!" << endl;}
 	
-}
-
-// Declare NDT algorithm with predefined parameters
-Eigen::Matrix4d NDT(PointCloudT::Ptr mapCloud, PointCloudT::Ptr source, Pose startingPose){
-	pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>ndt;
-	Eigen::Matrix4f init = transform3D(startingPose.rotation.yaw, startingPose.rotation.pitch,
-		startingPose.rotation.roll, startingPose.position.x, startingPose.position.y, 
-		startingPose.position.z).cast<float>();
-
-	pcl::console::TicToc time;
-	time.tic();
-
-	int iteration = 60;
-	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ndt(new pcl::PointCloud<pcl::PointXYZ>);
-	ndt.setTransformationEpsilon(1e-8);
-	ndt.setResolution(1);
-	ndt.setMaximumIterations(iteration);
-	ndt.setInputSource(source);
-	ndt.setInputTarget(mapCloud);
-
-	ndt.align(*cloud_ndt, init);
-
-	cout << "converged: "<<ndt.hasConverged() << "score: "<< ndt.getFitnessScore() <<"time: "<<time.toc()<<"ms"<<endl;
-
-	Eigen::Matrix4d transformation_matrix = ndt.getFinalTransformation().cast<double>();
-
 	return transformation_matrix;
 }
 
-int main(int argc, char *argv[]){
-	int USE_NDT = 1;
-	if(argc == 2 && strcmp(argv[1], "2") == 0) USE_NDT = 0;
+Eigen::Matrix4d NDT(PointCloudT::Ptr mapCloud, PointCloudT::Ptr source, Pose startingPose, int iterations, int resolution) 
+{
+    pcl::NormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> ndt;
+    ndt.setTransformationEpsilon(1e-4);
+    ndt.setResolution(resolution); //resolution
+  
+    ndt.setInputTarget(mapCloud);
+    pcl::console::TicToc time;
+    time.tic ();
+    Eigen::Matrix4f init_guess = transform3D(startingPose.rotation.yaw, startingPose.rotation.pitch, startingPose.rotation.roll, startingPose.position.x, startingPose.position.y, startingPose.position.z).cast<float>();
 
-	int n_scans = 0;
+    ndt.setMaximumIterations(iterations);
+    ndt.setInputSource(source);
+
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud_ndt (new pcl::PointCloud<pcl::PointXYZ>);
+  
+    ndt.align(*cloud_ndt, init_guess);
+  
+    cout << "NDT converged?: " << ndt.hasConverged() << " Score: " << ndt.getFitnessScore() <<  endl;
+    Eigen::Matrix4d transformed = ndt.getFinalTransformation ().cast<double>();
+  
+    return transformed;
+}
+
+int main(){
+
 	auto client = cc::Client("localhost", 2000);
 	client.SetTimeout(2s);
 	auto world = client.GetWorld();
@@ -214,8 +201,8 @@ int main(int argc, char *argv[]){
 		if(new_scan){
 			auto scan = boost::static_pointer_cast<csd::LidarMeasurement>(data);
 			for (auto detection : *scan){
-				if((detection.x*detection.x + detection.y*detection.y + detection.z*detection.z) > 8.0){
-					pclCloud.points.push_back(PointT(detection.x, detection.y, detection.z));
+				if((detection.point.x*detection.point.x + detection.point.y*detection.point.y + detection.point.z*detection.point.z) > 8.0){ // Don't include points touching ego
+					pclCloud.points.push_back(PointT(detection.point.x, detection.point.y, detection.point.z));
 				}
 			}
 			if(pclCloud.points.size() > 5000){ // CANDO: Can modify this value to get different scan resolutions
@@ -257,50 +244,30 @@ int main(int argc, char *argv[]){
 
 			Accuate(accuate, control);
 			vehicle->ApplyControl(control);
+         	cout << "applied control" << endl;
 		}
 
   		viewer->spinOnce ();
 		
 		if(!new_scan){
-			if(n_scans == 0){
-				// At the beginning of the localization, the ground truth is initialized.
-				pose.position = truePose.position;
-				pose.rotation = truePose.rotation;
-			}
-			// count for the scan
-			n_scans++;
-
+			cout << "begin scan" << endl
 			new_scan = true;
 			// TODO: (Filter scan using voxel filter)
-			// declare the voxel grid 
-			pcl::VoxelGrid<PointT> vg;
-			// set the input cloud
-			vg.setInputCloud(scanCloud);
-			// set the filter resolution (original setup 0.5)
-			double filterRes = 0.5;
-			// set the leaf size of the voxel grid
-			vg.setLeafSize(filterRes, filterRes, filterRes);
-			// set the cloud filter
-			typename pcl::PointCloud<PointT>::Ptr cloudFiltered (new pcl::PointCloud<PointT>);
-			// filter the point cloud
+			pcl::VoxelGrid<PointT> vg; //declare voxelgrid
+			vg.setInputCloud(scanCloud); //set input cloud
+			double filterRes = 1.0; //resoultion
+			vg.setLeafSize(filterRes, filterRes, filterRes); // leaf size
 			vg.filter(*cloudFiltered);
-
 			// TODO: Find pose transform by using ICP or NDT matching
-			//pose = ....
-			// Find the matching transform
-			Eigen::Matrix4d matching_transform = USE_NDT ? NDT(mapCloud, cloudFiltered, pose) : ICP(mapCloud, cloudFiltered, pose);
-			// Identify the pose transform based on matching
-			pose = getPose(matching_transform);
-
+			//Eigen::Matrix4d transform = ICP(mapCloud, cloudFiltered, pose, 100);
+			Eigen::Matrix4d transform = NDT(mapCloud, cloudFiltered, pose, 130, 10);
+          	pose = getPose(transform);
 			// TODO: Transform scan so it aligns with ego's actual pose and render that scan
-			// Declare the correct scan
-			PointCloudT::Ptr correct_scan (new PointCloudT);
-			// Tranform the cloud filter to the correct scan
-			pcl::transformPointCloud(*cloudFiltered, *correct_scan, matching_transform);
-
+			PointCloudT::Ptr ScanCorrected (new PointCloudT);
+			pcl::transformPointCloud(*cloudFiltered, *ScanCorrected, transform);
 			viewer->removePointCloud("scan");
 			// TODO: Change `scanCloud` below to your transformed scan
-			renderPointCloud(viewer, correct_scan, "scan", Color(1,0,0) );
+			renderPointCloud(viewer, ScanCorrected, "scan", Color(1,0,0) );
 
 			viewer->removeAllShapes();
 			drawCar(pose, 1,  Color(0,1,0), 0.35, viewer);
