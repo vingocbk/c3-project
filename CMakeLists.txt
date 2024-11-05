@@ -21,7 +21,7 @@ include_directories(libcarla-install/include)
 include_directories(libcarla-install/include/system)
 include_directories(rpclib/include)
 
-find_package(PCL 1.2 REQUIRED)
+find_package(PCL 1.14 REQUIRED)
 
 include_directories(${PCL_INCLUDE_DIRS})
 link_directories(${PCL_LIBRARY_DIRS})

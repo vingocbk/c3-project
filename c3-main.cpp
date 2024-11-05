@@ -34,6 +34,7 @@ using namespace std;
 #include <pcl/registration/icp.h>
 #include <pcl/registration/ndt.h>
 #include <pcl/console/time.h>   // TicToc
+#include <pcl/registration/gicp.h>
 
 PointCloudT pclCloud;
 cc::Vehicle::Control control;
@@ -207,14 +208,15 @@ Eigen::Matrix4d NDT(PointCloudT::Ptr mapCloud, PointCloudT::Ptr source, Pose sta
 	ndtDetection.align(*cloud_ndt); // Align source to target
 
 	// Check if NDT has successfully converged
+	Eigen::Matrix4d final_transf;
 	if (ndtDetection.hasConverged())
 	{
 		// Print the convergence result and score
 		std::cout << "\nNDT took " << time.toc() << " ms" << std::endl;
-		std:cout<<"\nNDT score : " << ndt.getFitnessScore() << std::endl;
+		// std:cout<<"\nNDT score : " << ndt.getFitnessScore() << std::endl;
 
 		// Get the final transformation matrix
-		Eigen::Matrix4d final_transf = ndt.getFinalTransformation().cast<double>();
+		Eigen::Matrix4d final_transf = ndtDetection.getFinalTransformation().cast<double>();
 		// Return the final transformation matrix
 		return final_transf;
 	}
