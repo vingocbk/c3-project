@@ -66,6 +66,10 @@ If you encounter core dump on start up, just rerun and try again. Crash doesn't 
 
 
 
-Here is a glimpse of the running project.
+This is the result of the NDT Algorithm
 
-![a glimpse of the running project](../../assets/L7_Project.png)
+![a glimpse of the running project](/image/ndt.png)
+
+This is the result of the ICP Algorithm
+
+![a glimpse of the running project](/image/icp.png)
